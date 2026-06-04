@@ -16,21 +16,23 @@ Before running the installation script, ensure your system meets the following r
 The easiest way to deploy the bot is by using the automated `setup.sh` script. It handles configuration and environment setup in one go.
 1. Create a directory and go into it:
 ```bash
-   mkdir ssl-checker-tgbot
-   cd ./ssl-checker-tgbot
+mkdir ssl-checker-tgbot
+```
+```bash
+cd ./ssl-checker-tgbot
 ```
 2. Download 'setup.sh':
 ```bash
-   sudo wget -O setup.sh "https://github.com/kraget37/ssl-checker-tgbot/blob/main/setup.sh"
+sudo wget -O setup.sh "https://raw.githubusercontent.com/kraget37/ssl-checker-tgbot/refs/heads/main/setup.sh"
 ```   
 3. Make the script executable and run it:
 ```bash
-   chmod +x setup.sh && ./setup.sh
+sudo chmod +x setup.sh && ./setup.sh
 ```
 
 The script will prompt you for the necessary configuration variables (for example, your Telegram bot's token) and offer a command to launch the Docker container.
 ```bash
-   sudo docker compose up -d
+sudo docker compose up -d
 ```
 ---
 
