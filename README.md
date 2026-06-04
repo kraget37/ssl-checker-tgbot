@@ -29,7 +29,9 @@ The easiest way to deploy the bot is by using the automated `setup.sh` script. I
 ```
 
 The script will prompt you for the necessary configuration variables (for example, your Telegram bot's token) and offer a command to launch the Docker container.
-
+```bash
+   sudo docker compose up -d
+```
 ---
 
 ### File Structure & Description
