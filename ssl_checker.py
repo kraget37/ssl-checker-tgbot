@@ -10,16 +10,13 @@ from dotenv import load_dotenv
 # ================= НАСТРОЙКА ОКРУЖЕНИЯ (.env) =================
 ENV_FILE = '.env'
 
-# Если файла нет, создаем шаблон и останавливаем скрипт
 if not os.path.exists(ENV_FILE):
     with open(ENV_FILE, 'w', encoding='utf-8') as f:
         f.write("BOT_TOKEN=твой_токен_здесь\n")
         f.write("ADMIN_ID=твой_id_здесь\n")
     print(f"[!] Файл {ENV_FILE} не найден. Я создал шаблон.")
-    print(f"[!] Заполни BOT_TOKEN и ADMIN_ID в файле {ENV_FILE} и запусти скрипт заново.")
     exit(0)
 
-# Загружаем переменные из .env
 load_dotenv()
 BOT_TOKEN = os.getenv('BOT_TOKEN')
 ADMIN_ID = os.getenv('ADMIN_ID')
@@ -33,15 +30,10 @@ if not ADMIN_ID or ADMIN_ID == 'твой_id_здесь':
 
 bot = telebot.TeleBot(BOT_TOKEN)
 
-# Подключаем прокси (если нужно, раскомментируй)
-# from telebot import apihelper
-# apihelper.proxy = {'http': 'http://127.0.0.1:10808', 'https': 'http://127.0.0.1:10808'}
-
 # ================= БАЗА ДАННЫХ =================
 DB_FILE = 'domains.json'
 
 def load_db():
-    """Загружает базу. Формат: {'operators': ['id1'], 'domains': ['google.com']}"""
     if os.path.exists(DB_FILE):
         try:
             with open(DB_FILE, 'r', encoding='utf-8') as f:
@@ -51,7 +43,6 @@ def load_db():
     return {"operators": [], "domains": []}
 
 def save_db(db_data):
-    """Сохраняет базу в JSON."""
     with open(DB_FILE, 'w', encoding='utf-8') as f:
         json.dump(db_data, f, indent=4)
 
@@ -66,7 +57,6 @@ def is_operator(chat_id):
 def has_access(chat_id):
     return is_admin(chat_id) or is_operator(chat_id)
 
-# Создаем клавиатуру в зависимости от роли
 def get_menu(chat_id):
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
     btn_check = types.KeyboardButton('🔍 Проверить всё')
@@ -79,9 +69,13 @@ def get_menu(chat_id):
         btn_del_op = types.KeyboardButton('❌ Удалить оператора')
         markup.add(btn_check, btn_list, btn_add, btn_del, btn_add_op, btn_del_op)
     else:
-        # Оператор видит только это
         markup.add(btn_check, btn_list)
         
+    return markup
+
+def get_cancel_markup():
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    markup.add(types.KeyboardButton('❌ Отмена'))
     return markup
 
 # ================= ЛОГИКА ПРОВЕРКИ =================
@@ -93,7 +87,6 @@ def check_ssl_expiry(domain: str):
                 cert = ssock.getpeercert()
                 expire_date_str = cert['notAfter']
                 expire_date = datetime.strptime(expire_date_str, '%b %d %H:%M:%S %Y %Z')
-                
                 current_time = datetime.now(timezone.utc).replace(tzinfo=None)
                 days_left = (expire_date - current_time).days
                 return days_left, expire_date
@@ -110,14 +103,14 @@ def check_ssl_expiry(domain: str):
 def send_welcome(message):
     chat_id = message.chat.id
     if not has_access(chat_id):
-        bot.send_message(chat_id, f"⛔️ Доступ запрещен.\nВаш ID: `{chat_id}`\nПередайте его администратору для получения прав.", parse_mode="Markdown")
+        bot.send_message(chat_id, f"⛔️ Доступ запрещен.\nВаш ID: `{chat_id}`", parse_mode="Markdown")
         return
         
     role = "Администратор" if is_admin(chat_id) else "Оператор"
     text = f"Привет! Я бот для мониторинга SSL-сертификатов.\nВаша роль: **{role}**\nВыберите действие в меню:"
     bot.send_message(chat_id, text, reply_markup=get_menu(chat_id), parse_mode="Markdown")
 
-# --- БЛОК ОПЕРАТОРА И АДМИНА (Доступно обоим) ---
+# --- БЛОК ОПЕРАТОРА И АДМИНА ---
 
 @bot.message_handler(func=lambda message: message.text == '🔍 Проверить всё' or message.text == '/check')
 def check_all(message):
@@ -148,11 +141,9 @@ def list_domains(message):
     if not has_access(message.chat.id): return
     db = load_db()
     domains = db.get("domains", [])
-    
     if not domains:
         bot.reply_to(message, "Список доменов пуст.")
         return
-        
     response = "Мониторинг доменов:\n\n"
     for idx, d in enumerate(domains, 1):
         response += f"{idx}. {d}\n"
@@ -163,11 +154,11 @@ def list_domains(message):
 @bot.message_handler(func=lambda message: message.text == '➕ Добавить домен')
 def add_domain_start(message):
     if not is_admin(message.chat.id): return
-    msg = bot.send_message(message.chat.id, "Напишите домен (например: google.com):", reply_markup=types.ReplyKeyboardRemove())
+    msg = bot.send_message(message.chat.id, "Напишите домен (например: google.com):", reply_markup=get_cancel_markup())
     bot.register_next_step_handler(msg, process_add_domain)
 
 def process_add_domain(message):
-    if message.text.startswith('/') or ' ' in message.text or message.text.startswith('🔍'):
+    if message.text == '❌ Отмена' or (message.text and message.text.startswith('/')):
         bot.send_message(message.chat.id, "Отмена.", reply_markup=get_menu(message.chat.id))
         return
 
@@ -184,19 +175,39 @@ def process_add_domain(message):
 @bot.message_handler(func=lambda message: message.text == '❌ Удалить домен')
 def del_domain_start(message):
     if not is_admin(message.chat.id): return
-    msg = bot.send_message(message.chat.id, "Напишите домен для удаления:", reply_markup=types.ReplyKeyboardRemove())
+    db = load_db()
+    domains = db.get("domains", [])
+    
+    if not domains:
+        bot.send_message(message.chat.id, "База доменов пуста, удалять нечего.")
+        return
+
+    text = "Выберите номер домена для удаления:\n\n"
+    for i, d in enumerate(domains, 1):
+        text += f"{i}. {d}\n"
+        
+    msg = bot.send_message(message.chat.id, text, reply_markup=get_cancel_markup())
     bot.register_next_step_handler(msg, process_del_domain)
 
 def process_del_domain(message):
-    domain_to_del = message.text.strip().lower()
+    if message.text == '❌ Отмена' or (message.text and message.text.startswith('/')):
+        bot.send_message(message.chat.id, "Отмена.", reply_markup=get_menu(message.chat.id))
+        return
+
+    if not message.text.isdigit():
+        bot.send_message(message.chat.id, "Нужно было ввести цифру. Отмена.", reply_markup=get_menu(message.chat.id))
+        return
+
+    idx = int(message.text) - 1
     db = load_db()
-    
-    if domain_to_del in db["domains"]:
-        db["domains"].remove(domain_to_del)
+    domains = db.get("domains", [])
+
+    if 0 <= idx < len(domains):
+        domain_to_del = domains.pop(idx)
         save_db(db)
         bot.send_message(message.chat.id, f"🗑 Домен {domain_to_del} удален.", reply_markup=get_menu(message.chat.id))
     else:
-        bot.send_message(message.chat.id, f"Домен {domain_to_del} не найден.", reply_markup=get_menu(message.chat.id))
+        bot.send_message(message.chat.id, "Нет домена с таким номером. Отмена.", reply_markup=get_menu(message.chat.id))
 
 # --- БЛОК АДМИНА (Управление операторами) ---
 
@@ -204,41 +215,85 @@ def process_del_domain(message):
 def add_op_start(message):
     if not is_admin(message.chat.id): return
     db = load_db()
-    text = f"Текущие операторы: {', '.join(db['operators']) if db['operators'] else 'нет'}\n\nВведите Telegram ID нового оператора (только цифры):"
-    msg = bot.send_message(message.chat.id, text, reply_markup=types.ReplyKeyboardRemove())
+    
+    # Убрали специальную кнопку контакта, оставляем только кнопку Отмена
+    markup = get_cancel_markup()
+
+    text = (f"Текущие операторы: {', '.join(db['operators']) if db['operators'] else 'нет'}\n\n"
+            "Чтобы добавить оператора, используйте один из способов:\n"
+            "1. Нажмите на **скрепку 📎** внизу экрана, выберите **Контакт 👤** и отправьте нужного человека из записной книжки.\n"
+            "2. Или просто введите его Telegram ID цифрами.")
+            
+    msg = bot.send_message(message.chat.id, text, reply_markup=markup, parse_mode="Markdown")
     bot.register_next_step_handler(msg, process_add_op)
 
 def process_add_op(message):
-    if not message.text.isdigit():
-        bot.send_message(message.chat.id, "ID должен состоять только из цифр. Отмена.", reply_markup=get_menu(message.chat.id))
+    if (message.text and message.text == '❌ Отмена') or (message.text and message.text.startswith('/')):
+        bot.send_message(message.chat.id, "Отмена.", reply_markup=get_menu(message.chat.id))
         return
-        
-    op_id = message.text.strip()
+
+    op_id = None
+
+    # Если пользователь прикрепил контакт через скрепку
+    if message.content_type == 'contact':
+        if message.contact.user_id:
+            op_id = str(message.contact.user_id)
+        else:
+            # Важный нюанс Telegram: если у человека скрыт ID настройками приватности, 
+            # Telegram не передаст его боту даже при отправке контакта.
+            bot.send_message(message.chat.id, "У этого контакта скрыт Telegram ID настройками приватности, либо его нет в Telegram. Попробуйте ввести ID вручную.", reply_markup=get_menu(message.chat.id))
+            return
+    # Если пользователь ввел ID вручную
+    elif message.content_type == 'text' and message.text.isdigit():
+        op_id = message.text.strip()
+    else:
+        bot.send_message(message.chat.id, "Ожидался ID (цифры) или контакт. Отмена.", reply_markup=get_menu(message.chat.id))
+        return
+
     db = load_db()
-    
     if op_id in db["operators"]:
         bot.send_message(message.chat.id, f"Пользователь {op_id} уже является оператором.", reply_markup=get_menu(message.chat.id))
     else:
         db["operators"].append(op_id)
         save_db(db)
-        bot.send_message(message.chat.id, f"✅ Оператор {op_id} добавлен! Теперь он может проверять домены.", reply_markup=get_menu(message.chat.id))
+        bot.send_message(message.chat.id, f"✅ Оператор {op_id} добавлен!", reply_markup=get_menu(message.chat.id))
 
 @bot.message_handler(func=lambda message: message.text == '❌ Удалить оператора')
 def del_op_start(message):
     if not is_admin(message.chat.id): return
-    msg = bot.send_message(message.chat.id, "Введите Telegram ID оператора для удаления:", reply_markup=types.ReplyKeyboardRemove())
+    db = load_db()
+    ops = db.get("operators", [])
+    
+    if not ops:
+        bot.send_message(message.chat.id, "Список операторов пуст.")
+        return
+
+    text = "Выберите номер оператора для удаления:\n\n"
+    for i, op in enumerate(ops, 1):
+        text += f"{i}. {op}\n"
+        
+    msg = bot.send_message(message.chat.id, text, reply_markup=get_cancel_markup())
     bot.register_next_step_handler(msg, process_del_op)
 
 def process_del_op(message):
-    op_id = message.text.strip()
+    if message.text == '❌ Отмена' or (message.text and message.text.startswith('/')):
+        bot.send_message(message.chat.id, "Отмена.", reply_markup=get_menu(message.chat.id))
+        return
+
+    if not message.text.isdigit():
+        bot.send_message(message.chat.id, "Нужно было ввести цифру. Отмена.", reply_markup=get_menu(message.chat.id))
+        return
+
+    idx = int(message.text) - 1
     db = load_db()
-    
-    if op_id in db["operators"]:
-        db["operators"].remove(op_id)
+    ops = db.get("operators", [])
+
+    if 0 <= idx < len(ops):
+        op_to_del = ops.pop(idx)
         save_db(db)
-        bot.send_message(message.chat.id, f"🗑 Оператор {op_id} удален. У него больше нет доступа.", reply_markup=get_menu(message.chat.id))
+        bot.send_message(message.chat.id, f"🗑 Оператор {op_to_del} удален.", reply_markup=get_menu(message.chat.id))
     else:
-        bot.send_message(message.chat.id, f"ID {op_id} не найден в списке операторов.", reply_markup=get_menu(message.chat.id))
+        bot.send_message(message.chat.id, "Нет оператора с таким номером. Отмена.", reply_markup=get_menu(message.chat.id))
 
 # ================= ЗАПУСК БОТА =================
 if __name__ == '__main__':
