@@ -1,0 +1,8 @@
+services:
+  ssl-bot:
+    image: kraget37/ssl-checker-tgbot
+    container_name: ssl-checker-tgbot
+    restart: unless-stopped
+    volumes:
+      - ./.env:/app/.env
+      - ./domains.json:/app/domains.json
