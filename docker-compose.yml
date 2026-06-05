@@ -13,4 +13,4 @@ services:
       - CRITICAL_DAYS=14
       - MAX_WORKERS=10
     volumes:
-      - ./domains.json:/app/domains.json
+      - ./data:/app/data
