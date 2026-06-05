@@ -7,7 +7,7 @@ read -p "Введите BOT_TOKEN от BotFather: " BOT_TOKEN
 read -p "Введите ваш Telegram ADMIN_ID (только цифры): " ADMIN_ID
 
 # 2. Создание файла domains.json
-echo "[1/2] Создаю файл domains.json..."
+echo "[1/3] Создаю файл domains.json..."
 cat <<EOF > domains.json
 {
     "operators": [],
@@ -18,8 +18,12 @@ cat <<EOF > domains.json
 }
 EOF
 
+# Настраиваем права доступа, чтобы Docker-контейнер мог перезаписывать файл
+echo "[2/3] Настраиваю права доступа для базы данных..."
+chmod 666 domains.json
+
 # 3. Создание файла docker-compose.yml
-echo "[2/2] Создаю файл docker-compose.yml..."
+echo "[3/3] Создаю файл docker-compose.yml..."
 cat <<EOF > docker-compose.yml
 services:
   ssl-bot:
@@ -38,7 +42,9 @@ services:
     volumes:
       - ./domains.json:/app/domains.json
 EOF
+
 sudo docker compose up -d
+
 echo "=== Подготовка успешно завершена! ==="
 echo "Файлы domains.json и docker-compose.yml созданы в текущей директории."
 echo "Бот успешно запущен."
