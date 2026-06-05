@@ -2,13 +2,13 @@
 
 echo "=== Настройка окружения для SSL Checker Bot ==="
 
-# 1. Интерактивный опрос пользователя
-read -p "Введите BOT_TOKEN от BotFather: " BOT_TOKEN
-read -p "Введите ваш Telegram ADMIN_ID (только цифры): " ADMIN_ID
-
-# 2. Создание файла domains.json
-echo "[1/3] Создаю файл domains.json..."
-cat <<EOF > domains.json
+# 1. Создание структуры данных
+echo "[1/3] Проверяю папку data и файл domains.json..."
+mkdir -p data
+if [ -f "data/domains.json" ]; then
+    echo "Файл data/domains.json уже существует, создание пропущено."
+else
+    cat <<EOF > data/domains.json
 {
     "operators": [],
     "domains": [
@@ -17,14 +17,26 @@ cat <<EOF > domains.json
     ]
 }
 EOF
+    echo "Базовый файл domains.json успешно создан."
+fi
 
-# Настраиваем права доступа, чтобы Docker-контейнер мог перезаписывать файл
+# Настраиваем права доступа на папку и файл
 echo "[2/3] Настраиваю права доступа для базы данных..."
-chmod 666 domains.json
+chmod 777 data
+chmod 666 data/domains.json
 
-# 3. Создание файла docker-compose.yml
-echo "[3/3] Создаю файл docker-compose.yml..."
-cat <<EOF > docker-compose.yml
+# 2. Создание файла docker-compose.yml
+echo "[3/3] Проверяю конфигурацию docker-compose..."
+if [ -f "docker-compose.yml" ]; then
+    echo "Файл docker-compose.yml уже существует."
+    echo "Если вы хотели изменить настройки (токен/ID), отредактируйте файл вручную."
+else
+    echo "Файл docker-compose.yml не найден. Давайте его создадим."
+    # Спрашиваем токены ТОЛЬКО если нужно создать новый файл
+    read -p "Введите BOT_TOKEN от BotFather: " BOT_TOKEN
+    read -p "Введите ваш Telegram ADMIN_ID (только цифры): " ADMIN_ID
+
+    cat <<EOF > docker-compose.yml
 services:
   ssl-bot:
     image: kraget37/ssl-checker-tgbot:latest
@@ -40,14 +52,19 @@ services:
       - CRITICAL_DAYS=14
       - MAX_WORKERS=10
     volumes:
-      - ./domains.json:/app/domains.json
+      - ./data:/app/data
 EOF
-
-sudo docker compose up -d
+    echo "Файл docker-compose.yml успешно создан."
+fi
 
 echo "=== Подготовка успешно завершена! ==="
-echo "Файлы domains.json и docker-compose.yml созданы в текущей директории."
-echo "Бот успешно запущен."
+
+# 3. Запуск контейнера
+echo "Запускаю движок Docker Compose..."
+# Docker Compose сам проверит, запущен ли контейнер, и обновит его при необходимости
+sudo docker compose up -d
+
 echo ""
+echo "✅ Бот готов к работе!"
 echo "⚙️ Изменить токен бота или ID админа можно в файле docker-compose.yml"
-echo "📂 Список операторов и детальная информация о доменах находится в файле domains.json"
+echo "📂 Список операторов и детальная информация о доменах находится в файле data/domains.json"
