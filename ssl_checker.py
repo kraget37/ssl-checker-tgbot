@@ -68,7 +68,11 @@ LAST_CHECK = None
 # ============================================================
 #  БАЗА ДАННЫХ (потокобезопасная, с миграцией формата)
 # ============================================================
-DB_FILE = 'domains.json'
+# Создаем папку data, если её нет
+DATA_DIR = 'data'
+os.makedirs(DATA_DIR, exist_ok=True)
+
+DB_FILE = os.path.join(DATA_DIR, 'domains.json')
 _DB_LOCK = threading.RLock()
 
 
