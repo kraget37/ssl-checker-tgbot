@@ -1,8 +1,16 @@
 services:
   ssl-bot:
-    image: kraget37/ssl-checker-tgbot
+    image: kraget37/ssl-checker-tgbot:latest
     container_name: ssl-checker-tgbot
     restart: unless-stopped
+    environment:
+      # Обязательные параметры
+      - BOT_TOKEN=твой_токен_от_бота
+      - ADMIN_ID=твой_telegram_id
+      # Необязательные параметры
+      - CHECK_INTERVAL_HOURS=12
+      - WARNING_DAYS=30
+      - CRITICAL_DAYS=14
+      - MAX_WORKERS=10
     volumes:
-      - ./.env:/app/.env
       - ./domains.json:/app/domains.json
