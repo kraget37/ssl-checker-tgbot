@@ -28,8 +28,8 @@ services:
     restart: unless-stopped
     environment:
       # Обязательные параметры
-      - BOT_TOKEN=твой_токен_от_бота
-      - ADMIN_ID=твой_telegram_id
+      - BOT_TOKEN=${BOT_TOKEN}
+      - ADMIN_ID=${ADMIN_ID}
       # Необязательные параметры
       - CHECK_INTERVAL_HOURS=12
       - WARNING_DAYS=30
