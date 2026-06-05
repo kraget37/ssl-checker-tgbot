@@ -42,3 +42,7 @@ After modifying the variables, apply the changes instantly without downtime by r
 ```bash
 sudo docker compose up -d
 ```
+⚠️If you don't want to use the installation script, but use docker-compose, after trying to build "sudo docker compose up -d" you will get the error "permission denied", grant rights to the data folder:
+```bash
+sudo chmod -R 777 data
+```
