@@ -14,26 +14,13 @@ Before running the installation script, ensure your system meets the following r
 ### Installation via Script
 
 The easiest way to deploy the bot is by using the automated `setup.sh` script. It handles configuration and environment setup in one go.
-1. Create a directory and go into it:
-```bash
-mkdir ssl-checker-tgbot
-```
-```bash
-cd ./ssl-checker-tgbot
-```
-2. Download 'setup.sh':
-```bash
-sudo wget -O setup.sh "https://raw.githubusercontent.com/kraget37/ssl-checker-tgbot/refs/heads/main/setup.sh"
-```   
-3. Make the script executable and run it:
-```bash
-sudo chmod +x setup.sh && ./setup.sh
-```
 
-The script will prompt you for the necessary configuration variables (for example, your Telegram bot's token) and offer a command to launch the Docker container.
+One-line installation:
 ```bash
-sudo docker compose up -d
+mkdir -p ssl-checker-tgbot && cd ./ssl-checker-tgbot && sudo wget -O setup.sh "https://raw.githubusercontent.com/kraget37/ssl-checker-tgbot/refs/heads/main/setup.sh" && sudo chmod +x setup.sh && ./setup.sh
 ```
+The script will ask you for the necessary configuration variables (your Telegram bot's token and your Telegram ID) and automatically launch the bot in Docker.
+
 ---
 
 ### File Structure & Description
@@ -41,5 +28,17 @@ sudo docker compose up -d
 Here is an overview of the key components created and used in this project:
 
 * **`setup.sh`** — Automated bash script for initial configuration, environment setup, and deployment.
-* **`docker-compose.yml`** — Docker Compose configuration file defining the bot services and container layout.
-* **`.env`** — Configuration file storing secret environment variables (e.g., API keys, tokens).
+* **`docker-compose.yml`** — The definitive service definitions and runtime specifications for the containerized application.
+* **`domains.json`** — The self-contained database of the application. It maintains an inventory of tracked domains, sub-operators, and the cached dynamic statuses from ongoing SSL/TLS sweeps.
+
+Since the application relies strictly on cloud-native environment ingestion, you do not need to rebuild the image or maintain .env files to update your setup.
+To rotate tokens, hand over administration rights, or adjust check intervals, simply modify the environment block inside your active docker-compose.yml file:
+```bash
+environment:
+  - BOT_TOKEN=your_new_telegram_bot_token
+  - ADMIN_ID=your_new_telegram_admin_id
+```
+After modifying the variables, apply the changes instantly without downtime by running:
+```bash
+sudo docker compose up -d
+```
