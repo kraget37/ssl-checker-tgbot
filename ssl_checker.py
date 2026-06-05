@@ -6,6 +6,7 @@ import re
 import logging
 import threading
 import time
+from logging.handlers import RotatingFileHandler
 from datetime import datetime, timezone
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -52,7 +53,8 @@ logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s [%(levelname)s] %(message)s',
     handlers=[
-        logging.FileHandler('ssl_bot.log', encoding='utf-8'),
+        # Ротация: максимум 5 МБ на файл, храним не больше 2 старых файлов
+        RotatingFileHandler('ssl_bot.log', maxBytes=5*1024*1024, backupCount=2, encoding='utf-8'),
         logging.StreamHandler(),
     ],
 )
